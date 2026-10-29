@@ -1,0 +1,22 @@
+# Dépendances locales : les applications tournent sur la machine (make dev).
+name: reservations
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: reservations
+      POSTGRES_PASSWORD: reservations
+      POSTGRES_DB: reservations
+    ports:
+      - '${POSTGRES_PORT:-5435}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U reservations -d reservations']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres-data:
