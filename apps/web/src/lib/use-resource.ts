@@ -32,6 +32,7 @@ export function useResource<T>(key: string | null, load: () => Promise<T>): Reso
       current = false;
     };
     // `load` change à chaque rendu : la clé dit quand recharger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, version]);
 
   const reload = useCallback(() => setVersion((value) => value + 1), []);

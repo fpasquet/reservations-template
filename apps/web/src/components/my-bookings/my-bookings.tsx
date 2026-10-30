@@ -159,7 +159,7 @@ function MemberBookings({ member }: { member: Member }) {
           <Button variant="secondary" onClick={() => setToCancel(null)} autoFocus>
             Garder la réservation
           </Button>
-          <Button variant="danger" onClick={confirmCancel} disabled={cancelling}>
+          <Button variant="danger" onClick={() => void confirmCancel()} disabled={cancelling}>
             {cancelling ? 'Annulation…' : 'Annuler la réservation'}
           </Button>
         </div>

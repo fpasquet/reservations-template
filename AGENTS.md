@@ -19,10 +19,16 @@ Instructions pour les personnes et les agents qui contribuent à ce dépôt.
   déroulante, fenêtre modale, onglets, notifications…), couleurs, rayons et espacements uniquement par les jetons du
   thème (`apps/web/src/app/globals.css`). Chaque écran a ses états de chargement, d'erreur et de liste vide, et reste
   utilisable au clavier.
-- Les commandes passent par le Makefile : `make install`, `make up`, `make db-migrate`, `make db-seed`, `make dev`,
-  `make test`, `make typecheck`, `make build`.
+- Tout tourne dans Docker Compose (`docker-compose.yml`) ; seuls Docker et make sont installés sur la machine. Les
+  commandes passent par le Makefile (`make help`) : `make install`, `make up`, `make db-migrate`, `make db-seed`,
+  `make dev`, `make test`, `make test-db`, `make lint`, `make typecheck`, `make build`, `make check` ; une dépendance
+  s'ajoute par `make pnpm args="add …"`.
 - Toute règle métier est testée (Vitest, à côté du code : `*.test.ts`) ; les routes de l'API se testent avec supertest
-  sur les dépôts en mémoire (`apps/api/src/testing/`).
-- Avant de rendre la main : `pnpm format:check`, `make typecheck test build`.
+  sur les dépôts en mémoire (`apps/api/src/testing/`). Les requêtes SQL et les migrations se testent contre Postgres
+  (`*.int.test.ts`, `make test-db`).
+- L'heure courante vient de l'horloge (`CLOCK` dans l'API, `currentTime()` dans l'interface), jamais de `new Date()` :
+  `FAKE_NOW` la règle pour les démos et les tests.
+- Avant de rendre la main : `make check` (format, lint, types, tests, build), et `make test-db` si le SQL ou une
+  migration a changé.
 - Commits en [Conventional Commits](https://www.conventionalcommits.org/) (`feat(bookings): …`, `fix(web): …`), une PR
   par ticket, qui cite son numéro (`Closes #3`).

@@ -2,7 +2,11 @@
   "$schema": "https://turborepo.com/schema.json",
   "ui": "stream",
   "tasks": {
-    "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".next/**", "!.next/cache/**"], "env": ["API_URL"] },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": ["API_URL", "FAKE_NOW", "FAKE_NOW_SINCE"]
+    },
     "dev": { "cache": false, "persistent": true },
     "typecheck": {},
     "test": { "outputs": [] }

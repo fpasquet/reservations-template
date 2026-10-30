@@ -152,7 +152,7 @@ function BookingForm({
   const attendeesHint = room ? `Facultatif · jusqu’à ${seatsLabel(room.capacity)}` : 'Facultatif';
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form onSubmit={(event) => void submit(event)} noValidate className="flex flex-col gap-4">
       {formError && (
         <div role="alert" className="flex gap-2 rounded-control bg-danger-soft p-3 text-sm text-danger">
           <AlertIcon className="mt-0.5 size-4 shrink-0" />

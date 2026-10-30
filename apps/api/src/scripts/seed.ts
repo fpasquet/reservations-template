@@ -1,8 +1,10 @@
 import { connect } from '../database.js';
 import type { Equipment } from '../rooms/room.js';
-import { nextDate, parisDateTime, parisInstant } from '../shared/paris-time.js';
+import { clockFromEnv } from '../shared/clock.js';
+import { parisDateTime, parisInstant } from '../shared/paris-time.js';
 
-// Jeu d'exemple : les salles et les membres de l'espace, et un planning sur cette semaine et la suivante.
+// Jeu d'exemple : les salles et les membres de l'espace, un planning sur cette semaine et la suivante, et trois mois
+// d'historique. Tout est relatif à « maintenant » (FAKE_NOW compris) et le seed se rejoue à l'identique.
 
 interface SeedRoom {
   name: string;
@@ -78,6 +80,14 @@ const rooms: SeedRoom[] = [
     color: '#6b5ca5',
     description: 'Sous la verrière, pour les présentations, les événements et les petits-déjeuners des membres.',
   },
+  {
+    name: "Salle d'Été",
+    floor: 0,
+    capacity: 10,
+    equipment: ['screen', 'whiteboard', 'step_free_access'],
+    color: '#c58b2a',
+    description: 'Ouverte sur le patio, pour les ateliers et les déjeuners d’équipe aux beaux jours.',
+  },
 ];
 
 const members = [
@@ -87,9 +97,10 @@ const members = [
   { fullName: 'Thomas Nguyen', email: 'thomas.nguyen@example.com', company: 'Nguyen Conseil' },
   { fullName: 'Inès Moreau', email: 'ines.moreau@example.com', company: 'Cartographik' },
   { fullName: 'Hugo Lefèvre', email: 'hugo.lefevre@example.com', company: 'Cabinet Lefèvre' },
+  { fullName: "Zoé N'Diaye", email: 'zoe.ndiaye@example.com', company: 'Maison Baobab' },
 ];
 
-/** [jour depuis le lundi de cette semaine, salle, membre (1 à 6), début, fin, titre, participants, annulée] */
+/** [jour depuis le lundi de cette semaine, salle, membre (1 à 7), début, fin, titre, participants, annulée] */
 type SeedBooking = [number, string, number, string, string, string, number | null, boolean?];
 
 const bookings: SeedBooking[] = [
@@ -133,7 +144,43 @@ const bookings: SeedBooking[] = [
   [11, 'Salon Verrière', 4, '12:00', '14:00', 'Déjeuner networking', 16],
   [11, 'Petit Salon', 2, '10:00', '11:00', 'Point freelance', 2],
   [11, 'Cabine 1', 1, '09:00', '09:45', 'Appel radio', 1, true],
+  [1, "Salle d'Été", 7, '14:00', '15:30', 'Point partenaires', 3],
+  [9, "Salle d'Été", 7, '10:00', '12:00', 'Atelier tarifs', 6],
+  // Les soirées, jusqu'à la fermeture.
+  [0, 'Petit Salon', 4, '18:00', '20:00', 'Apéro des indépendants', 4],
+  [1, 'Atelier', 2, '18:30', '20:00', 'Meetup JavaScript', 14],
+  [2, 'La Serre', 7, '18:00', '20:00', 'Club de lecture', 8],
+  [4, 'Bibliothèque', 7, '18:30', '20:00', 'Atelier d’écriture', 5],
+  [4, 'Studio', 1, '18:00', '19:30', 'Enregistrement en public', 3],
+  [7, "Salle d'Été", 3, '18:00', '20:00', 'Soirée jeux de société', 10],
+  [8, 'Atelier', 4, '18:00', '20:00', 'Formation Python du soir', 12],
+  [9, 'Petit Salon', 6, '18:30', '20:00', 'Dîner client', 4],
+  [10, 'Salon Verrière', 2, '18:00', '20:00', 'Conférence produit', 20],
+  [11, 'La Serre', 5, '18:00', '20:00', 'Soirée cartographie', 6, true],
 ];
+
+// Jours où l'espace est fermé en 2026 (docs/reglement.md) : le jeu d'exemple n'y place aucune réservation.
+const CLOSED_DAYS = new Set([
+  '2026-01-01',
+  '2026-04-06',
+  '2026-05-01',
+  '2026-05-08',
+  '2026-05-14',
+  '2026-05-25',
+  '2026-07-14',
+  ...['10', '11', '12', '13', '14', '17', '18', '19', '20', '21'].map((day) => `2026-08-${day}`),
+  '2026-11-11',
+  '2026-12-25',
+]);
+
+/** Titres de l'historique, par taille de salle. */
+const PAST_TITLES = {
+  small: ['Appel client', 'Visio d’équipe', 'Entretien', 'Appel fournisseur', 'Point avec l’expert-comptable'],
+  medium: ['Point hebdo', 'Rendez-vous client', 'Revue de projet', 'Session de rédaction', 'Atelier personas'],
+  large: ['Formation', 'Atelier collectif', 'Présentation client', 'Rétrospective', 'Séminaire d’équipe'],
+};
+
+const HISTORY_WEEKS = 13;
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -144,9 +191,9 @@ const minutesOf = (time: string) => {
 };
 
 function addDays(date: string, days: number): string {
-  let result = date;
-  for (let i = 0; i < days; i++) result = nextDate(result);
-  return result;
+  const result = new Date(`${date}T00:00:00Z`);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result.toISOString().slice(0, 10);
 }
 
 function mondayOf(date: string): string {
@@ -167,27 +214,74 @@ interface Row {
   cancelledAt: Date | null;
 }
 
-const now = new Date();
+const now = clockFromEnv().now();
 const today = parisDateTime(now);
 const monday = mondayOf(today.date);
 const roomId = (name: string) => rooms.findIndex((room) => room.name === name) + 1;
 
-const rows: Row[] = bookings.map(([day, room, member, start, end, title, attendees, cancelled], index) => {
-  const date = addDays(monday, day);
-  const startsAt = parisInstant(date, minutesOf(start));
-  const createdAt = new Date(Math.min(startsAt.getTime(), now.getTime()) - ((index % 4) + 2) * DAY);
-  const cancelledAt = cancelled ? new Date(Math.min(startsAt.getTime(), now.getTime()) - 3 * HOUR) : null;
-  return {
-    room: roomId(room),
-    member,
-    title,
-    attendees,
-    startsAt,
-    endsAt: parisInstant(date, minutesOf(end)),
-    createdAt,
-    cancelledAt,
+const rows: Row[] = bookings
+  .filter(([day]) => !CLOSED_DAYS.has(addDays(monday, day)))
+  .map(([day, room, member, start, end, title, attendees, cancelled], index) => {
+    const date = addDays(monday, day);
+    const startsAt = parisInstant(date, minutesOf(start));
+    const createdAt = new Date(Math.min(startsAt.getTime(), now.getTime()) - ((index % 4) + 2) * DAY);
+    const cancelledAt = cancelled ? new Date(Math.min(startsAt.getTime(), now.getTime()) - 3 * HOUR) : null;
+    return {
+      room: roomId(room),
+      member,
+      title,
+      attendees,
+      startsAt,
+      endsAt: parisInstant(date, minutesOf(end)),
+      createdAt,
+      cancelledAt,
+    };
+  });
+
+// Trois mois d'historique, tirés d'un générateur à graine fixe : le même jeu à chaque chargement.
+function generator(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
-});
+}
+
+const random = generator(2026);
+const pick = <T>(items: readonly T[]): T => items[Math.floor(random() * items.length)]!;
+
+for (let day = -HISTORY_WEEKS * 7; day < 0; day++) {
+  const date = addDays(monday, day);
+  const weekday = ((day % 7) + 7) % 7;
+  if (weekday >= 5 || CLOSED_DAYS.has(date)) continue;
+  const taken: Row[] = [];
+  const count = 3 + Math.floor(random() * 4);
+  for (let attempt = 0; attempt < count * 3 && taken.length < count; attempt++) {
+    const room = pick(rooms);
+    const from = 8 * 60 + 30 * Math.floor(random() * 22);
+    const duration = pick([30, 60, 60, 90, 120, 180, 240]);
+    const to = Math.min(from + duration, 20 * 60);
+    const startsAt = parisInstant(date, from);
+    const endsAt = parisInstant(date, to);
+    const id = roomId(room.name);
+    if (taken.some((row) => row.room === id && row.startsAt < endsAt && startsAt < row.endsAt)) continue;
+    const size = room.capacity <= 2 ? 'small' : room.capacity <= 8 ? 'medium' : 'large';
+    const cancelled = random() < 0.08;
+    taken.push({
+      room: id,
+      member: 1 + Math.floor(random() * members.length),
+      title: pick(PAST_TITLES[size]),
+      attendees: random() < 0.2 ? null : 1 + Math.floor(random() * room.capacity),
+      startsAt,
+      endsAt,
+      createdAt: new Date(startsAt.getTime() - (1 + Math.floor(random() * 14)) * DAY),
+      cancelledAt: cancelled ? new Date(startsAt.getTime() - (1 + Math.floor(random() * 48)) * HOUR) : null,
+    });
+  }
+  rows.push(...taken);
+}
 
 // Une réservation en cours au moment du chargement, si l'espace est ouvert : un appel pris il y a une demi-heure.
 const quarter = Math.floor(today.minutes / 15) * 15;
@@ -239,7 +333,7 @@ try {
   }
   await client.query('commit');
   console.log(
-    `Seeded ${rooms.length} rooms, ${members.length} members and ${rows.length} bookings (week of ${monday}).`,
+    `Seeded ${rooms.length} rooms, ${members.length} members and ${rows.length} bookings (week of ${monday}, now ${now.toISOString()}).`,
   );
 } catch (error) {
   await client.query('rollback');

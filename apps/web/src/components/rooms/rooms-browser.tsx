@@ -42,7 +42,7 @@ export function RoomsBrowser() {
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Salles</h1>
-        <p className="mt-1 text-ink-muted">Huit espaces, de la cabine pour un appel au salon pour vingt personnes.</p>
+        <p className="mt-1 text-ink-muted">Neuf espaces, de la cabine pour un appel au salon pour vingt personnes.</p>
       </div>
 
       <Card className="flex flex-col gap-4 p-4 md:flex-row md:items-end">

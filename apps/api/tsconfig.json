@@ -12,5 +12,5 @@
     "outDir": "dist",
     "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["src", "vitest.config.ts", "vitest.int.config.ts"]
 }

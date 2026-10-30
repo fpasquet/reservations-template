@@ -11,13 +11,13 @@ import { PgMembersRepository } from './members/pg-members.repository.js';
 import { PgRoomsRepository } from './rooms/pg-rooms.repository.js';
 import { RoomsController } from './rooms/rooms.controller.js';
 import { ROOMS_REPOSITORY } from './rooms/rooms.repository.js';
-import { CLOCK, systemClock } from './shared/clock.js';
+import { CLOCK, clockFromEnv } from './shared/clock.js';
 
 @Module({
   controllers: [HealthController, RoomsController, MembersController, BookingsController],
   providers: [
     { provide: DATABASE, useFactory: () => connect() },
-    { provide: CLOCK, useValue: systemClock },
+    { provide: CLOCK, useFactory: () => clockFromEnv() },
     { provide: ROOMS_REPOSITORY, useClass: PgRoomsRepository },
     { provide: MEMBERS_REPOSITORY, useClass: PgMembersRepository },
     { provide: BOOKINGS_REPOSITORY, useClass: PgBookingsRepository },

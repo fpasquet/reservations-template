@@ -1,3 +1,5 @@
+import { currentTime } from './clock';
+
 /** L'espace est à Paris : journées et horaires s'affichent en heure de Paris, quel que soit le fuseau du navigateur. */
 export const TIME_ZONE = 'Europe/Paris';
 
@@ -51,7 +53,7 @@ export function parisInstant(date: string, minutes: number): Date {
   return new Date(wallClock - offsetAt(new Date(first)));
 }
 
-export function todayInParis(now = new Date()): string {
+export function todayInParis(now = currentTime()): string {
   return parisDateTime(now).date;
 }
 

@@ -56,7 +56,7 @@ export interface TestApp {
 export async function createTestApp(now: Date): Promise<TestApp> {
   const clock = { current: now };
   const fixedClock: Clock = { now: () => clock.current };
-  const bookings = new InMemoryBookingsRepository(rooms, members, fixedClock.now);
+  const bookings = new InMemoryBookingsRepository(rooms, members, () => clock.current);
   const module = await Test.createTestingModule({
     controllers: [RoomsController, MembersController, BookingsController],
     providers: [
