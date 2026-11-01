@@ -36,5 +36,5 @@ COPY --from=build --chown=node:node /repo/apps/web/.next/static ./apps/web/.next
 USER node
 EXPOSE 3030
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3030/ >/dev/null || exit 1
+  CMD wget -Y off -qO- http://127.0.0.1:3030/ >/dev/null || exit 1
 CMD ["node", "apps/web/server.js"]

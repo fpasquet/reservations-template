@@ -59,8 +59,9 @@ services:
     depends_on:
       install: { condition: service_completed_successfully }
       db: { condition: service_healthy }
+    # -Y off : la sonde vise le conteneur lui-même, jamais un proxy (le wget de busybox ignore no_proxy).
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:4030/api/health || exit 1']
+      test: ['CMD-SHELL', 'wget -Y off -qO- http://127.0.0.1:4030/api/health || exit 1']
       interval: 3s
       retries: 60
 
@@ -85,7 +86,7 @@ services:
     depends_on:
       install: { condition: service_completed_successfully }
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3030/ || exit 1']
+      test: ['CMD-SHELL', 'wget -Y off -qO- http://127.0.0.1:3030/ || exit 1']
       interval: 5s
       retries: 60
 
