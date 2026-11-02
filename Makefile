@@ -19,6 +19,7 @@ mounts:
 
 install: mounts ## Construit les images, installe les dépendances (volumes Docker) et crée .env s'il manque
 	@test -f .env || (cp .env.example .env && echo "Créé .env depuis .env.example")
+	@grep -q '^DEV_UID=' .env || printf '\nDEV_UID=%s\nDEV_GID=%s\n' "$(DEV_UID)" "$(DEV_GID)" >> .env
 	$(COMPOSE) build
 	$(COMPOSE) run --rm install
 
